@@ -125,3 +125,5 @@
 	return sign, true
 
 	}
+
+## [Github地址](https://github.com/luciscode/wechat/tree/master/src/wechat/wsign)

@@ -227,6 +227,8 @@
 	get_brand_wcpay_request:cancel	支付过程中用户取消
 	get_brand_wcpay_request:fail	支付失败
 
+## [Github地址](https://github.com/luciscode/wechat/tree/master/src/wechat/jsapipay)
+
 
 
 

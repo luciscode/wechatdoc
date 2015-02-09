@@ -150,7 +150,7 @@
 -	进入左边:微信支付->开发配置菜单
 -	点击修改，填写:Native原生支付回调URL，在这个例子里面我们填写为：http://xxx/Nativeonecallback
 
-
+#### [Github地址](https://github.com/luciscode/wechat/tree/master/src/wechat/nativeone)
 
 ## 测试
 
