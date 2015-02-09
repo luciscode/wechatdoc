@@ -15,9 +15,9 @@
 
 -	使用JS脚本：getBrandWCPayRequest 掉起微信支付
 
--	输入输出的参数格式为JSON
 
-> getBrandWCPayRequest在其他浏览器中无效
+-	输入输出的参数格式为JSON
+> getBrandWCPayRequest在其他浏览器中无效，必须在微信的浏览器中
 	
 > getBrandWCPayRequest使用的参数名区分大小
 
