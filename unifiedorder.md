@@ -1,0 +1,153 @@
+# 统一下单
+
+除被扫支付场景以外，商户系统先调用该接口在微信支付服务后台生成预支付交易单，返回正确的预支付交易回话标识后再按扫码、JSAPI、APP等不同场景生成交易串调起支付。
+
+统一下单时除了被扫支付之外的其他支付方式必须要进行的操作
+
+# 使用场景
+
+-	扫码支付模式1，模式2
+
+-	JSAPI 支付
+
+-	APP支付
+	
+## 统一下单接口
+
+	https://api.mch.weixin.qq.com/pay/unifiedorder
+
+-	数据提交方式为post方式
+
+-	数据格式为xml格式
+
+
+#	 商户侧流程
+ 
+商户在实现扫码支付，JSAPI支付以及APP支付的时候，都必须调用统一下单来获取prepay_id，然后再利用prepay_id根据不同的支付场景发起支付
+
+# 开发实现
+
+## 创建unifiedorder包
+
+创建unifiedorder文件夹
+
+## 统一下单请求
+
+创建`unifiedorderrequest.go`文件，实现：
+
+-	Unifieldrequest结构体：定义统一下单要使用的参数
+
+-	Signmd5()函数:获取Unifieldreques里面的非空字段的MD5签名
+
+-	Xml()函数：把Unifieldreques里面的非空字段，生成统一下单的要求的xml格式数据
+
+-	Dorequest()函数:发送请求的xml数据到统一下单接口，并返回请求结果
+
+代码如下：
+
+	package unifiedorder
+
+	import (
+	"encoding/xml"
+	"wechat/config"
+	"wechat/whttp"
+	"wechat/wlog"
+	"wechat/wsign"
+	"wechat/wxml"
+	)
+
+	//1.创建Unifieldrequest结构体，存放要使用的数据，omitempty 表示该字段选填，否则为必填
+	type Unifieldrequest struct {
+	XMLName          xml.Name `xml:"xml"`
+	Appid            string   `xml:"appid"`                 //公众账号ID
+	Attach           string   `xml:"attach,omitempty"`      //附加数据
+	Body             string   `xml:"body"`                  //商品描述
+	Detail           string   `xml:"detail,omitempty"`      //商品详情
+	Device_info      string   `xml:"device_info,omitempty"` //设备号
+	Fee_type         string   `xml:"fee_type,omitempty"`    //货币类型
+	Notify_url       string   `xml:"notify_url"`            //通知地址
+	Goods_tag        string   `xml:"goods_tag,omitempty"`   //商品标记
+	Mch_id           string   `xml:"mch_id"`                //商户号
+	Nonce_str        string   `xml:"nonce_str"`             //随机字符串
+	Openid           string   `xml:"openid,omitempty"`      //用户标识
+	Out_trade_no     string   `xml:"out_trade_no"`          //商户订单号
+	Product_id       string   `xml:"product_id,omitempty"`  //商品ID
+	Sign             string   `xml:"sign"`                  //签名
+	Spbill_create_ip string   `xml:"spbill_create_ip"`      //终端IP
+	Time_expire      string   `xml:"time_expire,omitempty"` //交易结束时间
+	Time_start       string   `xml:"time_start,omitempty"`  //交易起始时间
+	Total_fee        string   `xml:"total_fee"`             //总金额
+	Trade_type       string   `xml:"trade_type"`            //交易类型
+
+	RequestXML string `xml:"-"` //存放最终请求xml串
+
+	}
+
+	//2.对Unifieldrequest里面的非空字段进行MD5签名，得到签名结构，并保存该结果
+	func (v *Unifieldrequest) Signmd5() bool {
+	signmd5, _ := wsign.SignMD5(*v, config.API_KEY)
+	v.Sign = signmd5
+	wlog.PrintlnW(signmd5, false)
+	return true
+	}
+
+	//3.将Unifieldrequest里面的非空字段组织为xml格式的数据
+	func (v *Unifieldrequest) Xml() error {
+
+	xmlresult, err := wxml.Endoestruct(v)
+	v.RequestXML = xmlresult
+	wlog.PrintlnW(xmlresult, false)
+	return err
+
+	}
+
+	//4.将最终生成的xml数据发送到统一支付接口，并把返回的结果解析到Unifiedorderreponse
+	func (v Unifieldrequest) Dorequest() Unifiedorderreponse {
+
+	data := whttp.Post(config.URL_UNIFIEDORDER, v.RequestXML)
+	unifiedorderreponse := Unifiedorderreponse{}
+	wxml.Decodebytes(data, &unifiedorderreponse)
+	unifiedorderreponse.ReponseXML = string(data)
+	return unifiedorderreponse
+	}
+
+
+##  统一下单结果返回
+
+创建文件 `unifiedorderresponse.go`，存储发起统一下单请求后的返回结果
+
+-	Unifiedorderreponse结构体：定义返回的数据 
+
+代码如下
+
+	package unifiedorder
+
+	import (
+	"encoding/xml"
+	)
+
+	//1.存储统一下单的返回的数据
+	type Unifiedorderreponse struct {
+	XMLName     xml.Name `xml:"xml"`
+	Return_code string   `xml:"return_code"` //返回状态码
+	Return_msg  string   `xml:"return_msg"`  //返回信息
+	//以下字段在return_code为SUCCESS的时候有返回
+	Appid        string `xml:"appid"`                  //公众账号ID
+	Mch_id       string `xml:"mch_id"`                 //商户号
+	Device_info  string `xml:"device_info,omitempty"`  //设备号
+	Nonce_str    string `xml:"nonce_str"`              //随机字符串
+	Sign         string `xml:"sign"`                   //签名
+	Result_code  string `xml:"result_code"`            //业务结果
+	Err_code     string `xml:"err_code,omitempty"`     //错误代码
+	Err_code_des string `xml:"err_code_des,omitempty"` //错误代码描述
+	//以下字段在return_code 和result_code都为SUCCESS的时候有返回
+	Trade_type string `xml:"trade_type,omitempty"` //交易类型
+	Prepay_id  string `xml:"prepay_id,omitempty"`  //预支付交易会话标识
+	Code_url   string `xml:"code_url,omitempty"`   //二维码链接
+
+	ReponseXML string `xml:"-"` //存储返回的xml串
+
+	}
+	
+
+
